@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The Bazel Authors. All rights reserved.
+ * Copyright 2019 The Bazel Authors. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.idea.sdkcompat.cidr;
+package com.intellij.webcore.libraries;
 
+import com.intellij.lang.LanguagePerFileMappings;
 import com.intellij.openapi.project.Project;
-import com.jetbrains.cidr.lang.workspace.OCWorkspace;
 
-/** Adapter to bridge different SDK versions. */
-public abstract class OCWorkspaceManagerAdapter {
-  public abstract OCWorkspace getWorkspace();
-
-  protected OCWorkspace getWorkspaceFallback(Project project) {
-    return OCWorkspace.getInstance(project);
+/** Fake {@link ScriptingLibraryMappings}, so that we can compile against IntelliJ CE. */
+public abstract class ScriptingLibraryMappings
+    extends LanguagePerFileMappings<ScriptingLibraryModel> {
+  public ScriptingLibraryMappings(Project project) {
+    super(project);
   }
+
+  public boolean isAssociatedWithProject(String libName) {
+    return false;
+  }
+
+  public void disassociateWithProject(String libraryName) {}
 }

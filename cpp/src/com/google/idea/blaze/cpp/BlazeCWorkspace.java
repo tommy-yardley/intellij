@@ -199,7 +199,6 @@ public final class BlazeCWorkspace implements ProjectComponent {
 
         // localIncludes are sourced from -I options in a target's "copts" attribute
         // transitiveIncludeDirectories are sourced from CcSkylarkApiProvider.include_directories
-        // [see CcCompilationContextInfo::getIncludeDirs]
         ImmutableList<String> iOptionIncludeDirectories =
             Stream.concat(
                     localIncludes.stream(),
@@ -213,7 +212,6 @@ public final class BlazeCWorkspace implements ProjectComponent {
 
         // transitiveQuoteIncludeDirectories are sourced from
         // CcSkylarkApiProvider.quote_include_directories
-        // [see CcCompilationContextInfo::getQuoteIncludeDirs]
         ImmutableList<String> iquoteOptionIncludeDirectories =
             targetIdeInfo.getcIdeInfo().getTransitiveQuoteIncludeDirectories().stream()
                 .flatMap(
@@ -224,14 +222,15 @@ public final class BlazeCWorkspace implements ProjectComponent {
                 .collect(toImmutableList());
         // transitiveSystemIncludeDirectories are sourced from
         // CcSkylarkApiProvider.system_include_directories
-        // [see CcCompilationContextInfo::getSystemIncludeDirs]
+        // Note: We would ideally use -isystem here, but it interacts badly with the switches
+        // that get built by ClangUtils::addIncludeDirectories (it uses -I for system libraries).
         ImmutableList<String> isystemOptionIncludeDirectories =
             targetIdeInfo.getcIdeInfo().getTransitiveSystemIncludeDirectories().stream()
                 .flatMap(
                     executionRootPath ->
                         executionRootPathResolver.resolveToIncludeDirectories(executionRootPath)
                             .stream())
-                .map(file -> "-isystem" + file.getAbsolutePath())
+                .map(file -> "-I" + file.getAbsolutePath())
                 .collect(toImmutableList());
 
         for (VirtualFile vf : resolveConfiguration.getSources(targetKey)) {
@@ -244,11 +243,12 @@ public final class BlazeCWorkspace implements ProjectComponent {
 
           ImmutableList<String> baseSwitches = compilerSettings.getCompilerSwitches(kind, vf);
           fileSpecificSwitchBuilder.addAllRaw(baseSwitches);
-          fileSpecificSwitchBuilder.addAllRaw(iOptionIncludeDirectories);
+          fileSpecificSwitchBuilder.addAllRaw(transitiveDefineOptions);
           fileSpecificSwitchBuilder.addAllRaw(iquoteOptionIncludeDirectories);
+          fileSpecificSwitchBuilder.addAllRaw(iOptionIncludeDirectories);
           fileSpecificSwitchBuilder.addAllRaw(isystemOptionIncludeDirectories);
           fileSpecificSwitchBuilder.addAllRaw(plainLocalCopts);
-          fileSpecificSwitchBuilder.addAllRaw(transitiveDefineOptions);
+
           PerFileCompilerOpts perFileCompilerOpts =
               new PerFileCompilerOpts(kind, fileSpecificSwitchBuilder.build());
           configSourceFiles.put(vf, perFileCompilerOpts);

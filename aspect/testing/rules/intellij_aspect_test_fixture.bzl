@@ -31,7 +31,7 @@ def _impl(ctx):
         output_name + ".params",
     )
 
-    ctx.file_action(output = argfile, content = "\n".join(args))
+    ctx.actions.write(output = argfile, content = "\n".join(args))
     ctx.actions.run(
         inputs = inputs.to_list() + [argfile],
         outputs = [output],

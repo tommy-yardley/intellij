@@ -13,26 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.idea.blaze.android.cppimpl;
+package com.google.idea.sdkcompat.vcs;
 
-import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.cpp.BlazeCWorkspace;
-import com.google.idea.sdkcompat.cidr.OCWorkspaceManagerAdapter;
 import com.intellij.openapi.project.Project;
-import com.jetbrains.cidr.lang.workspace.OCWorkspace;
+import com.intellij.openapi.vcs.changes.ui.ChangesListView;
 
-class BlazeCWorkspaceManager extends OCWorkspaceManagerAdapter {
-  private final Project project;
+/** Compat for {@link ChangesListView}. Remove when #api182 is no longer supported. */
+public final class ChangesListViewCompat {
+  private ChangesListViewCompat() {}
 
-  public BlazeCWorkspaceManager(Project project) {
-    this.project = project;
-  }
-
-  @Override
-  public OCWorkspace getWorkspace() {
-    if (Blaze.isBlazeProject(project)) {
-      return BlazeCWorkspace.getInstance(project).getWorkspace();
-    }
-    return getWorkspaceFallback(project);
+  // #api182
+  public static ChangesListView create(Project project) {
+    return new ChangesListView(project, /* showCheckboxes */ false);
   }
 }

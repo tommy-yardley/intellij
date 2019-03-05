@@ -298,7 +298,12 @@ def collect_go_info(target, ctx, semantics, ide_info, ide_info_file, output_grou
 
 def collect_cpp_info(target, ctx, semantics, ide_info, ide_info_file, output_groups):
     """Updates C++-specific output groups, returns false if not a C++ target."""
-    if not hasattr(target, "cc") or _is_language_specific_proto_library(ctx, target):
+
+    if CcInfo not in target or _is_language_specific_proto_library(ctx, target):
+        return False
+
+    # Go targets always provide CcInfo. Usually it's empty, but even if it isn't we don't handle it
+    if ctx.rule.kind.startswith("go_"):
         return False
 
     sources = artifacts_from_target_list_attr(ctx, "srcs")
@@ -313,21 +318,20 @@ def collect_cpp_info(target, ctx, semantics, ide_info, ide_info_file, output_gro
 
     target_copts = [expand_make_variables("copt", copt, ctx) for copt in target_copts]
 
-    # Check cc_provider for 'includes' and 'defines' target attribute values.
-    cc_provider = target.cc
+    compilation_context = target[CcInfo].compilation_context
 
     c_info = struct_omit_none(
         source = sources,
         header = headers,
         textual_header = textual_headers,
         target_copt = target_copts,
-        transitive_include_directory = cc_provider.include_directories,
-        transitive_quote_include_directory = cc_provider.quote_include_directories,
-        transitive_define = cc_provider.defines,
-        transitive_system_include_directory = cc_provider.system_include_directories,
+        transitive_include_directory = compilation_context.includes.to_list(),
+        transitive_quote_include_directory = compilation_context.quote_includes.to_list(),
+        transitive_define = compilation_context.defines.to_list(),
+        transitive_system_include_directory = compilation_context.system_includes.to_list(),
     )
     ide_info["c_ide_info"] = c_info
-    resolve_files = cc_provider.transitive_headers
+    resolve_files = compilation_context.headers
 
     # TODO(brendandouglas): target to cpp files only
     compile_files = target[OutputGroupInfo].compilation_outputs if hasattr(target[OutputGroupInfo], "compilation_outputs") else depset([])
@@ -517,21 +521,23 @@ def build_java_package_manifest(ctx, target, source_files, suffix):
     """Builds the java package manifest for the given source files."""
     output = ctx.actions.declare_file(target.label.name + suffix)
 
-    args = []
-    args += ["--output_manifest", output.path]
-    args += ["--sources"]
-    args += [":".join([_package_manifest_file_argument(f) for f in source_files])]
-    argfile = ctx.new_file(
-        ctx.configuration.bin_dir,
-        target.label.name + suffix + ".params",
+    args = ctx.actions.args()
+    args.add("--output_manifest")
+    args.add(output.path)
+    args.add_joined(
+        "--sources",
+        source_files,
+        join_with = ":",
+        map_each = _package_manifest_file_argument,
     )
-    ctx.actions.write(output = argfile, content = "\n".join(args))
+    args.use_param_file("@%s")
+    args.set_param_file_format("multiline")
 
     ctx.actions.run(
-        inputs = source_files + [argfile],
+        inputs = source_files,
         outputs = [output],
         executable = ctx.executable._package_parser,
-        arguments = ["@" + argfile.path],
+        arguments = [args],
         mnemonic = "JavaPackageManifest",
         progress_message = "Parsing java package strings for " + str(target.label),
     )

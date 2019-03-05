@@ -26,11 +26,9 @@ import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.sync.SyncListener;
 import com.google.idea.blaze.base.sync.SyncMode;
 import com.google.idea.blaze.base.sync.SyncResult;
-import com.google.idea.sdkcompat.cidr.OCWorkspaceProvider;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.TransactionGuard;
 import com.intellij.openapi.project.Project;
-import com.jetbrains.cidr.lang.workspace.OCWorkspace;
 import com.jetbrains.cidr.lang.workspace.OCWorkspaceModificationTrackers;
 
 final class BlazeNdkSupportEnabler implements SyncListener {
@@ -60,12 +58,7 @@ final class BlazeNdkSupportEnabler implements SyncListener {
    * @param enabled if true, turn on C support in the IDE. If false, turn off C support in the IDE.
    */
   private static void enableCSupportInIde(Project project, boolean enabled) {
-    OCWorkspace workspace = OCWorkspaceProvider.getWorkspace(project);
-    if (workspace == null) {
-      // NDK workspace manager plugin isn't enabled.
-      return;
-    }
-    Boolean isCurrentlyEnabled = !LANGUAGE_SUPPORT_DISABLED.get(project, false);
+    boolean isCurrentlyEnabled = !LANGUAGE_SUPPORT_DISABLED.get(project, false);
     if (isCurrentlyEnabled != enabled) {
       NdkHelper.disableCppLanguageSupport(project, !enabled);
       rebuildSymbols(project);
